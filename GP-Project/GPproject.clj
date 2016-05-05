@@ -5,17 +5,18 @@
 
    
   
-(defn rand-subtree
+(defn rand-tree
   "This function generates a random subtree."
   [terminal-set function-set]
-  (let [rand-item (rand-nth (rand-nth '(terminal-set function-set)))]
-    (if (fn? rand-item )
-      '(rand-item (rand-nth terminal-set) (rand-nth terminal-set))
-      '(rand-item))))
+  (loop [tree '()]
+    (let [rand-item (rand-nth (concat terminal-set function-set))]
+      (println rand-item)
+      (if (some #(= rand-item %) function-set)
+        (recur (conj tree rand-item))
+        (conj tree rand-item)))))
 
-(rand-nth ('(2 3 4  x) '(+ - *)))
-
-(rand-subtree '(2 3 4  x) '(+ - *))
+(some #(= '+ %) '(+ - *))
+(rand-tree '(2 3 4 x) '(+ - *))
   
 
 (defn rand-program
