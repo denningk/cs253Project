@@ -1,22 +1,40 @@
-(ns cs253.GPproject)
-
-
+(ns cs253.project)
 ; Initialization
 
-(defn rand-frontier-tree
-  "This function generates a random subtree with one function
-  and its arguments."
+   
+  
+(defn rand-subtree
+  "This function generates a random subtree."
   [terminal-set function-set]
-  (list (rand-nth function-set) (rand-nth terminal-set) (rand-nth terminal-set)))
+  (let [rand-item (rand-nth (rand-nth '(terminal-set function-set)))]
+    (if (fn? rand-item )
+      (list (rand-item (rand-nth terminal-set) (rand-nth terminal-set)))
+      rand-item)))
 
-(rand-frontier-tree '(2 3 4 x) '(+ - *))
+(defn random-program
+  ""
+  [terminal function]
+  (let [item (rand-nth (rand-nth (list terminal function)))]
+    (if #(contains? function %) item)
+      (list item (random-program terminal function) (random-program terminal function))
+      item))
 
-(defn rand-terminal
-  "This function returns a random terminal from the terminal set."
-  [terminal-set]
-  (list (rand-nth terminal-set)))
-                                                                                                                                
-(rand-terminal '(2 3 4 x))
+(random-program '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 x) '(+ - *))
+
+(list (rand-nth (rand-nth (list '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 x) '(+ - *))))
+      3 5)
+(rand-nth ('(2 3 4  x) '(+ - *)))
+
+(rand-subtree '(2 3 4  x) '(+ - *))
+
+(defn example-nest
+  []
+  ""
+  (let [a (range)]
+    (while #(<= 10 %) a
+      (list a example-nest))))
+
+(example-nest )
 
 (defn full-tree
   "This function creates a random full-tree"
@@ -29,20 +47,24 @@
           (rand-nth terminal-set)
           (full-tree terminal-set function-set (dec max-depth)))))
 
-
-(full-tree '(2 3 5 x) '(+ - *) 1)
-
-
 (defn grow-tree
-  "This function generates a random tree."
-  [terminal-set function-set]
-  (loop [tree '()]
-    (if (> (rand-int 0 100) 60)
-      )))
-
-(some #(= '+ %) '(+ - *))
-(grow-tree '(2 3 4 x) '(+ - *))
+  "This function creates a random grow-tree"
+  [terminal-set function-set max-depth]
+  (let [item (rand-nth (concat function-set terminal-set))]
+    (list item
+          (if (some #(= item %) terminal-set
+            item
+            (if (or (= 0 max-depth) (some #(= item %) terminal-set))
+              (rand-nth terminal-set)
+              (grow-tree terminal-set function-set (dec max-depth)))
+            (if (or (= 0 max-depth) (some #(=  item %) terminal-set))
+              (rand-nth terminal-set)
+              (grow-tree terminal-set function-set (dec max-depth))))))))
   
+(grow-tree '(2 3 4 5) '(+ * -) 3)
+(full-tree '(2 3 4 5) '(+ * -) 3)
+
+        
 
 (defn rand-program
   "This program generates a random program
@@ -55,23 +77,4 @@
   "This program generates a population of
    randomly generated programs."
   [num-pop max-depth terminal-set function-set]
-  (loop [pop []
-         num num-pop]
-    (if (= num 0)
-      pop
-      (recur (conj pop (full-tree terminal-set function-set max-depth))
-             (dec num)))))
-
-(gen-population 5 3 '(2 3 4 x) '(+ - *))
-    
-
-(def test-cases {})
-
-(defn fitness-eval
-  "This function creates a map of functions with their
-   respective error values."
-  [population test-cases]
-  (map #((let [x 
-    
-    
-    
+  )
