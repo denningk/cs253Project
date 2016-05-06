@@ -50,16 +50,21 @@
 (defn grow-tree
   "This function creates a random grow-tree"
   [terminal-set function-set max-depth]
-  (let [item (rand-nth (concat function-set terminal-set))]
-    (list item
-          (if (some #(= item %) terminal-set
+  
+  (let [item (rand-nth (concat function-set terminal-set) )]
+          (if (some #(= item %) terminal-set)
             item
-            (if (or (= 0 max-depth) (some #(= item %) terminal-set))
-              (rand-nth terminal-set)
-              (grow-tree terminal-set function-set (dec max-depth)))
-            (if (or (= 0 max-depth) (some #(=  item %) terminal-set))
-              (rand-nth terminal-set)
-              (grow-tree terminal-set function-set (dec max-depth))))))))
+         (list item
+               (if (or (= 0 max-depth) (some #(= item %) terminal-set))
+                 (rand-nth terminal-set)
+                 (grow-tree terminal-set function-set (dec max-depth)))
+                      
+               (if (or (= 0 max-depth) (some #(= item %) terminal-set))
+                 (rand-nth terminal-set)
+                 (grow-tree terminal-set function-set (dec max-depth)))
+         ))))
+  
+(grow-tree '(2 3 4 5) '(+ * -) 2)
   
 (grow-tree '(2 3 4 5) '(+ * -) 3)
 (full-tree '(2 3 4 5) '(+ * -) 3)
