@@ -15,7 +15,7 @@
   "This function returns a random terminal from the terminal set."
   [terminal-set]
   (list (rand-nth terminal-set)))
-  
+                                                                                                                                
 (rand-terminal '(2 3 4 x))
 
 (defn full-tree
@@ -63,3 +63,15 @@
              (dec num)))))
 
 (gen-population 5 3 '(2 3 4 x) '(+ - *))
+    
+
+(def test-cases {})
+
+(defn fitness-eval
+  "This function creates a map of functions with their
+   respective error values."
+  [population test-cases]
+  (map #((let [x 
+    
+    
+    
