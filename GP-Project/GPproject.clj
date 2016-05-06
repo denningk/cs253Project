@@ -69,6 +69,15 @@
 (grow-tree '(2 3 4 5) '(+ * -) 3)
 (full-tree '(2 3 4 5) '(+ * -) 3)
 
+(defn make-population
+  "Makes a population of n number of program-trees of max-depth 
+using terminal-set and function-set"
+  [n terminal-set function-set max-depth]
+  (list (take (* 0.5 n)(repeat (full-tree terminal-set function-set max-depth)))
+        (take (* 0.5 n)(repeat (grow-tree terminal-set function-set max-depth)))))
+
+(make-population 4 '(2 3 4 5) '(+ * -) 2)
+
         
 
 (defn rand-program
