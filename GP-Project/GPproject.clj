@@ -24,8 +24,17 @@
 (defn full-tree
   "This function creates a random full-tree"
   [terminal-set function-set max-depth]
- (let [current-tree (list (rand-nth function-set))]
-   (r))
+ (loop [depth max-depth]
+   (list (if (< depth max-depth)
+           (rand-nth function-set)
+           (rand-nth terminal-set))
+           (if (= depth max-depth)
+             (rand-nth terminal-set)
+             (recur (dec depth)))
+           (if (= depth max-depth)
+             (rand-nth terminal-set)
+             (recur (dec depth))))))
+
 
 (full-tree '(2 3 4 x) '(+ - *) 2)
 
