@@ -3,20 +3,42 @@
 
 ; Initialization
 
-   
+(defn rand-frontier-tree
+  "This function generates a random subtree with one function
+  and its arguments."
+  [terminal-set function-set]
+  (list (rand-nth function-set) (rand-nth terminal-set) (rand-nth terminal-set)))
+
+
+(rand-frontier-tree '(2 3 4 x) '(+ - *))
+
+
+(defn rand-terminal
+  "This function returns a random terminal from the terminal set."
+  [terminal-set]
+  (list (rand-nth terminal-set)))
+                                                                                  
+                                                        
+(rand-terminal '(2 3 4 x))
+
+(defn full-tree
+  "This function creates a random full-tree"
+  [terminal-set function-set max-depth]
+ (let [current-tree (list (rand-nth function-set))]
+   (r))
+
+(full-tree '(2 3 4 x) '(+ - *) 2)
+
   
-(defn rand-tree
-  "This function generates a random subtree."
+(defn grow-tree
+  "This function generates a random tree."
   [terminal-set function-set]
   (loop [tree '()]
-    (let [rand-item (rand-nth (concat terminal-set function-set))]
-      (println rand-item)
-      (if (some #(= rand-item %) function-set)
-        (recur (conj tree rand-item))
-        (conj tree rand-item)))))
+    (if (> (rand-int 0 100) 60)
+      )))
 
 (some #(= '+ %) '(+ - *))
-(rand-tree '(2 3 4 x) '(+ - *))
+(grow-tree '(2 3 4 x) '(+ - *))
   
 
 (defn rand-program
