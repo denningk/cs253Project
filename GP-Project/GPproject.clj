@@ -121,6 +121,14 @@ using terminal-set and function-set"
          {:function program :fitness (fitness-prog program test-cases)}) 
        population))
     
+(defn single-tourney
+  "This function runs a single round of a tournament."
+  [& programs]
+  (map keys programs))
+
+(single-tourney {2 3} {4 3})
+
+
 (defn tournmanent-selection
   "This function generates a list of programs which can
   be used as parents for the next generation."
@@ -131,6 +139,87 @@ using terminal-set and function-set"
   "This function is an ephemeral random constant."
   []
   (rand-nth (range -50 50)))
+
+(defn pd
+  "Protected division, to protect against divide by zero."
+  [x y]
+  (if (= y 0)
+    1
+    (/ x y)))
+
+(def instructions
+  '{+ 2
+    * 2
+    - 2
+    pd 2
+    inc 1})
+
+(defn program-size
+  [prog]
+  (if (seq? prog)
+    (count (flatten prog))
+    1))
+  
+(defn select-random-subtree
+  "Given a program, selects a random subtree and returns it."
+  ([prog]
+    (select-random-subtree prog (rand-int (program-size prog))))
+  ([prog subtree-index]
+    (cond
+      (not (seq? prog)) prog
+      (and (zero? subtree-index)
+           (some #{(first prog)} (keys instructions))) prog
+      (< subtree-index (program-size (first prog))) (recur (first prog)
+                                                           subtree-index)
+      :else (recur (rest prog)
+                   (- subtree-index (program-size (first prog)))))))
+
+(select-random-subtree prog)
+(select-random-subtree prog 0) ;gives subtree at index 0
+(select-random-subtree prog 1) ;gives subtree at index 1
+(select-random-subtree prog 2) ;gives subtree at index 2
+
+(defn replace-random-subtree
+  "Given a program and a replacement-subtree, replace a random node
+   in the program with the replacement-subtree."
+  ([prog replacement-subtree]
+      (replace-random-subtree prog replacement-subtree (rand-int (program-size prog))))
+  ([prog replacement-subtree subtree-index]
+    (cond
+      (not (seq? prog)) replacement-subtree
+      (zero? subtree-index) replacement-subtree
+      :else (map (fn [element start-index]
+                   (if (<= start-index
+                           subtree-index
+                           (+ start-index -1 (program-size element)))
+                     (replace-random-subtree element
+                                             replacement-subtree
+                                             (- subtree-index start-index))
+                     element))
+                 prog
+                 (cons 0 (reductions + (map program-size prog)))))))
+
+prog
+
+(replace-random-subtree prog 99)
+
+(defn crossover
+  "This function performs a crossover on two programs and
+  returns the new program."
+  [prog1 prog2]
+  (replace-random-subtree prog2 (select-random-subtree prog1)))
+
+(crossover '(+ (* 2 3) 2) '(- 3 2))
+
+(defn mutation
+  "This function takes a random node in a subtree and replaces it
+  with another random node."
+  [program terminal-set function-set max-depth]
+  (replace-random-subtree program (if (> (rand-int 10) 8)
+                                    (rand-terminal terminal-set)
+                                    (grow-tree terminal-set function-set max-depth))))
+
+(mutation '(+ (* 2 3) 2) '((erc) x) '(+ - pd *) 4)
 
 (defn genetic-programming
   "This function runs the genetic programming system.
@@ -144,7 +233,7 @@ using terminal-set and function-set"
         pop-size 1000
         max-gen 10]
     (let [initial-pop (make-population pop-size terminal-set function-set max-depth)]
-      ))
+      )))
 
 
 
