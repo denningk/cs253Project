@@ -53,7 +53,7 @@
 (grow-tree '(2 3 4 5) '(+ * -) 2)
 
 
-(grow-tree '(2 3 4 x) '(+ - *) 3)
+(grow-tree (list (erc) 'x) '(+ - *) 3)
   
 
 (defn rand-program
@@ -71,22 +71,24 @@
          num num-pop]
     (if (= num 0)
       pop
-      (recur (conj pop (full-tree terminal-set function-set max-depth))
+      (recur (conj pop (if (< (rand-int 10) 5)
+                         (full-tree terminal-set function-set max-depth)
+                         (grow-tree terminal-set function-set max-depth)))
              (dec num)))))
 
-(gen-population 5 3 '(2 3 4 x) '(+ - *))
+(gen-population 3 2 '((erc) x) '(+ - *))
 
 
 (defn make-population
-  "Makes a population of n number of program-trees of a random max-depth in range [2,6] 
+  "Makes a population of n number of program-trees of a inputed max-depth 
 using terminal-set and function-set"
   [pop-num terminal-set function-set max-depth]
-  (list (take (* 0.5 pop-num)(repeat (full-tree terminal-set function-set max-depth)))
-        (take (* 0.5 pop-num)(repeat (grow-tree terminal-set function-set max-depth)))))
+  (list (take (* 0.5 pop-num)(repeatedly #(full-tree terminal-set function-set max-depth)))
+        (take (* 0.5 pop-num)(repeatedly #(grow-tree terminal-set function-set max-depth)))))
 
 
 
-(make-population 5 '(2 3 4 5) '(+ * -) 1)
+(make-population 4 '(2 3 4 5) '(+ * -) 3)
     
 
 (def test-cases [{:x -10 :y -1007}
@@ -101,17 +103,24 @@ using terminal-set and function-set"
                  {:x 7 :y 353}
                  {:x 9 :y 741}])
 
+(defn make-program-into-fn
+  [program]
+  (eval (list 'fn
+              '[x]
+              program)))
+
 (defn fitness-prog
   "This function finds the fitness of a single program."
   [program test-cases]
   (apply + 
          (map (fn[test-case] 
                 (let [x (:x test-case)
-                      y (:y test-case)]
-                  (Math/abs (- (eval program) y))))
-              test-cases)))
+                      y (:y test-case)
+                      func-program (make-program-into-fn program)]
+                  (Math/abs (int (- (func-program x) y)))))
+         test-cases)))
 
-(fitness-prog '(+ (* (* x x) x) (+ x 3)) test-cases)
+(fitness-prog '(+ (+ 3 2) x) test-cases)
 
 (defn fitness-eval
   "This function creates a map of functions with their
@@ -121,6 +130,8 @@ using terminal-set and function-set"
          {:function program :fitness (fitness-prog program test-cases)}) 
        population))
     
+(fitness-eval '((+ (+ 3 2) x) (pd 2 (+ x 2)) (+ (* (* x x) x) (+ x 3))) test-cases)
+
 (defn single-tourney
   "This function runs a single round of a tournament."
   [& programs]
@@ -220,6 +231,24 @@ prog
                                     (grow-tree terminal-set function-set max-depth))))
 
 (mutation '(+ (* 2 3) 2) '((erc) x) '(+ - pd *) 4)
+
+(defn evolve
+  "This function takes a collection of selected parents and evolves them."
+  [parents terminal-set function-set max-depth]
+  (loop [new-pop []
+         evolve-num (count parents)]
+    (let [probability (rand-int 100)]
+      (cond (and (> probability 90) (> evolve-num 0)) (recur (conj new-pop (rand-nth parents))
+                                                             (dec evolve-num))
+            (and (> probability 50) (> evolve-num 0)) (recur (conj new-pop (mutation (rand-nth parents) terminal-set function-set max-depth))
+                                                             (dec evolve-num))
+            (and (> probability 0) (> evolve-num 0)) (recur (conj new-pop (crossover (rand-nth parents) (rand-nth parents)))
+                                                            (dec evolve-num))
+            :else new-pop))))
+                                                            
+(evolve '((+ (+ 3 2) x) (pd 2 (+ x 2)) (+ (* (* x x) x) (+ x 3))) '(2 3 x) '(pd + *) 3)
+
+
 
 (defn genetic-programming
   "This function runs the genetic programming system.
