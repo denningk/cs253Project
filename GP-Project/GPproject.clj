@@ -66,7 +66,7 @@
   "This program generates a population of
    randomly generated programs."
   [num-pop max-depth terminal-set function-set]
-  (loop [pop []
+  (loop [pop '()
          num num-pop]
     (if (= num 0)
       pop
@@ -75,7 +75,7 @@
                          (grow-tree terminal-set function-set max-depth)))
              (dec num)))))
 
-(gen-population 3 2 '((erc) x) '(+ - *))
+(gen-population 3 2 '(1 2 3 x) '(+ - * pd))
 
 
 (defn make-population
@@ -282,10 +282,10 @@ prog
   []
   (let [function-set '(+ - *)
         terminal-set '(1 2 3 x)
-        max-depth 5
-        pop-size 100
-        max-gen 10]
-    (loop [current-pop (make-population pop-size terminal-set function-set max-depth)
+        max-depth 3
+        pop-size 5
+        max-gen 2]
+    (loop [current-pop (gen-population max-depth pop-size terminal-set function-set)
            gen-num 0
            best-program nil
            best-prog-error nil]
@@ -301,8 +301,13 @@ prog
               best-prog-fitness (best-fitness current-fitness)]
           (recur (evolve (tournament-selection current-fitness)
                          terminal-set function-set max-depth)
-            (inc gen-num)
-            best-prog
-            best-prog-fitness))))))
+                 (inc gen-num)
+                 best-prog
+                 best-prog-fitness))))))
 
 (genetic-programming)
+
+(fitness-eval (evolve (tournament-selection (fitness-eval (gen-population 5 3 '(1 2 3 x) '(+ - * pd)) test-cases))
+                      '(1 2 3 x) '(+ - * pd) 3) test-cases)
+
+    
