@@ -147,7 +147,7 @@ using terminal-set and function-set"
   be used as parents for the next generation."
   [pop-maps]
   (repeatedly (count pop-maps) #(single-tourney 
-                                  (repeat (rand-nth (range 2 7)) (rand-nth pop-maps)))))
+                                  (repeatedly (rand-nth (range 2 4)) (fn [](rand-nth pop-maps))))))
 
 (tournament-selection (list {:function 2 :fitness 0}
                        {:function 6 :fitness 123}
@@ -244,7 +244,7 @@ prog
   "This function takes a random node in a subtree and replaces it
   with another random node."
   [program terminal-set function-set max-depth]
-  (replace-random-subtree program (if (> (rand-int 10) 8)
+  (replace-random-subtree program (if (> (rand-int 10) 5)
                                     (rand-terminal terminal-set)
                                     (grow-tree terminal-set function-set max-depth))))
 
@@ -280,11 +280,11 @@ prog
   the best program of that generation, and the total error
   of the best program."
   []
-  (let [function-set '(+ - *)
+  (let [function-set '(+ - * pd)
         terminal-set '(1 2 3 x)
-        max-depth 3
-        pop-size 5
-        max-gen 2]
+        max-depth 2
+        pop-size 10
+        max-gen 4]
     (loop [current-pop (gen-population max-depth pop-size terminal-set function-set)
            gen-num 0
            best-program nil
