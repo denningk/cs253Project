@@ -37,8 +37,7 @@
 (defn grow-tree
   "This function creates a random grow-tree"
   [terminal-set function-set max-depth]
-  
-  (let [item (rand-nth (concat function-set terminal-set) )]
+  (let [item (rand-nth (concat function-set terminal-set))]
     (if (some #(= item %) terminal-set)
       item
       (list item
@@ -133,18 +132,37 @@ using terminal-set and function-set"
 (fitness-eval '((+ (+ 3 2) x) (pd 2 (+ x 2)) (+ (* (* x x) x) (+ x 3))) test-cases)
 
 (defn single-tourney
-  "This function runs a single round of a tournament."
-  [& programs]
-  (map keys programs))
+  "This function runs a single round of a tournament.
+  It returns the function which wins the tourney. If there
+  is a tie, the winner is chosen randomly."
+  [&programs]
+  (let [best-error (apply min (map :fitness &programs))]
+    (:function (rand-nth (filter #(= best-error (:fitness %)) &programs)))))
 
-(single-tourney {2 3} {4 3})
+(single-tourney (list {:function 2 :fitness 0} {:function 5 :fitness 1}))
 
 
-(defn tournmanent-selection
+(defn tournament-selection
   "This function generates a list of programs which can
   be used as parents for the next generation."
-  [pop-map]
-  (take (rand-int 7) (repeatedly #(rand-nth pop-map))))
+  [pop-maps]
+  (repeatedly (count pop-maps) #(single-tourney 
+                                  (repeat (rand-nth (range 2 7)) (rand-nth pop-maps)))))
+
+(tournament-selection (list {:function 2 :fitness 0}
+                       {:function 6 :fitness 123}
+                       {:function 2 :fitness 46}
+                       {:function 8 :fitness 190}
+                       {:function 1 :fitness 2}
+                       {:function 3 :fitness 45}
+                       {:function 2 :fitness 156}
+                       {:function 4 :fitness 123}
+                       {:function 22 :fitness 21}
+                       {:function 545 :fitness 167}
+                       {:function 45 :fitness 56}
+                       {:function 89 :fitness 9}
+                       {:function 23 :fitness 4}
+                       {:function 90 :fitness 5}))
 
 (defn erc
   "This function is an ephemeral random constant."
@@ -235,7 +253,7 @@ prog
 (defn evolve
   "This function takes a collection of selected parents and evolves them."
   [parents terminal-set function-set max-depth]
-  (loop [new-pop []
+  (loop [new-pop '()
          evolve-num (count parents)]
     (let [probability (rand-int 100)]
       (cond (and (> probability 90) (> evolve-num 0)) (recur (conj new-pop (rand-nth parents))
@@ -248,23 +266,43 @@ prog
                                                             
 (evolve '((+ (+ 3 2) x) (pd 2 (+ x 2)) (+ (* (* x x) x) (+ x 3))) '(2 3 x) '(pd + *) 3)
 
+(defn best-fitness
+  "This functions finds thes the function with the best fitness
+  and outputs its value"
+  [pop-maps]
+  (apply min (map :fitness pop-maps)))
 
-
+(best-fitness (list {:function 2 :fitness 0} {:function 5 :fitness 1}))
+   
 (defn genetic-programming
   "This function runs the genetic programming system.
   For every generation, it displays the generation number,
   the best program of that generation, and the total error
   of the best program."
   []
-  (let [function-set '(+ - / *)
-        terminal-set '((erc) x)
+  (let [function-set '(+ - *)
+        terminal-set '(1 2 3 x)
         max-depth 5
-        pop-size 1000
+        pop-size 100
         max-gen 10]
-    (let [initial-pop (make-population pop-size terminal-set function-set max-depth)]
-      )))
+    (loop [current-pop (make-population pop-size terminal-set function-set max-depth)
+           gen-num 0
+           best-program nil
+           best-prog-error nil]
+      (println "Generation Number:" gen-num
+               "\nThe best program was:" best-program
+               "\nThe error of the best program was:" best-prog-error)
+      (if (or (= gen-num max-gen) (= best-prog-error 0))
+        (do (println "\nGenetic Evolution finished!")
+          (println "The best program is:")
+          best-program)
+        (let [current-fitness (fitness-eval current-pop test-cases)
+              best-prog (single-tourney current-fitness)
+              best-prog-fitness (best-fitness current-fitness)]
+          (recur (evolve (tournament-selection current-fitness)
+                         terminal-set function-set max-depth)
+            (inc gen-num)
+            best-prog
+            best-prog-fitness))))))
 
-
-
-
-    
+(genetic-programming)
