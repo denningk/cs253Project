@@ -56,7 +56,6 @@
                          (grow-tree terminal-set function-set max-depth)))
              (dec num)))))
 
-(gen-population 1000 2 '(1 2 3 x) '(+ - *))
 
 (defn make-population
   "Makes a population of n number of program-trees of a inputed max-depth 
@@ -99,7 +98,6 @@ using terminal-set and function-set. Does not use a loop."
                                     y)))))
               test-cases)))
 
-(fitness-prog '(3) test-cases)
 
 (defn fitness-eval
   "This function creates a map of functions with their
@@ -121,11 +119,11 @@ using terminal-set and function-set. Does not use a loop."
    (:function (rand-nth (filter #(= best-error (:fitness %)) &programs)))))
 
 (defn tournament-selection
-  "This function generates a list of programs which can
-  be used as parents for the next generation. 2 to 4 programs
+  "This function generates a programs which can
+  be used as a parent for the next generation. 2 to 4 programs
   are chosen to participate in each round."
   [pop-maps]
-  (single-tourney (repeatedly (rand-nth (range 2 4)) (fn [](rand-nth pop-maps)))))
+  (single-tourney (repeatedly (rand-nth (range 3 7)) (fn [](rand-nth pop-maps)))))
 
 (tournament-selection
   [{:function 3 :fitness 2}
@@ -154,6 +152,7 @@ using terminal-set and function-set. Does not use a loop."
     pd 2})
 
 (defn program-size
+  "This function finds the size of a program"
   [prog]
   (if (seq? prog)
     (count (flatten prog))
@@ -199,7 +198,7 @@ using terminal-set and function-set. Does not use a loop."
   [prog1 prog2]
   (replace-random-subtree prog2 (select-random-subtree prog1)))
 
-(crossover '(+ 3 4) '(* 2 5))
+
 
 (defn mutation
   "This function takes a random node in a subtree and replaces it
@@ -209,14 +208,14 @@ using terminal-set and function-set. Does not use a loop."
                                     (rand-terminal terminal-set)
                                     (grow-tree terminal-set function-set max-depth))))
 
-(mutation '(+ 3 4) '(3 4) '(+) 2)
 
 ; Combines all variation techniques
 (defn evolve
-  "This function takes a collection of selected parents and evolves them."
+  "This function takes a collection of selected parents and evolves them.
+  It calls tournament selection whenever a parent is needed."
   [pop-maps terminal-set function-set max-depth]
   (loop [new-pop '()
-         evolve-num (count pop-maps)]
+         evolve-num (pd (count pop-maps) 2)]
     (let [probability (rand-int 100)] ; Reproduction 10%, Mutation 40%, Crossover 50%
       (cond (and (> probability 90) (> evolve-num 0)) (recur (conj new-pop (tournament-selection pop-maps))
                                                              (dec evolve-num))
@@ -240,12 +239,12 @@ using terminal-set and function-set. Does not use a loop."
   the best program of that generation, and the total error
   of the best program."
   []
-  (let [function-set '(+ - * pd)
-        terminal-set '(1 2 3 x)
-        max-depth 3
-        pop-size 10
-        max-gen 2]
-    (loop [current-pop (gen-population max-depth pop-size terminal-set function-set) ; Initialize population
+  (let [function-set '(+ - *)
+        terminal-set '(3 x)
+        max-depth 2
+        pop-size 10000
+        max-gen 50]
+    (loop [current-pop (gen-population pop-size max-depth terminal-set function-set) ; Initialize population
            gen-num 0
            best-program nil
            best-prog-error nil]
@@ -259,22 +258,12 @@ using terminal-set and function-set. Does not use a loop."
         (let [current-fitness (fitness-eval current-pop test-cases) ; Fitness evaluation
               best-prog (single-tourney current-fitness) ; Finds best program of generation
               best-prog-fitness (best-fitness current-fitness)]
-          (recur (evolve (tournament-selection current-fitness) ; Selection and evolution
+          (recur (evolve current-fitness ; Selection and evolution
                          terminal-set function-set max-depth)
                  (inc gen-num)
                  best-prog
                  best-prog-fitness))))))
 
-(genetic-programming)
 
-(fitness-eval (evolve (tournament-selection (fitness-eval (gen-population 1000 3 '(1 2 3 x) '(+ - * pd)) test-cases))
-                    '(1 2 3 x) '(+ - * pd) 3) test-cases)
-
-
-(evolve (fitness-eval (gen-population 1000 3 '(1 2 3 x) '(+ - * pd)) test-cases) '(1 2 3 x) '(+ - * pd) 3)
-
-;; An error continues to occur in the "fitness-eval" function. If a program is a single terminal,
-;; a cast error is thrown because those single-terminal programs cannot be used as funcions. We attempted
-;; to fix this error but we were not able to even though the code that we added seems like it should work.
-;; If the genetic programming system is run enough times, it will eventually run all the way through with a low
-;; population and low generation.
+;; It seems like it can sometimes get close to the answer but the system will occasionally devolve.
+;; It might be luck but we also might need to add more test cases.
