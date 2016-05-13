@@ -159,80 +159,37 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;defining colorize
-(ns colorize.core
-"A set of functions to wrap strings in ansi-colors."
-  (:use [clojure.pprint :only [pprint]]))
-
-(def ansi-colors {:reset "[0m"
-                  :default "[39m"
-                  :white   "[37m"
-                  :black   "[30m"
-                  :red     "[31m"
-                  :green   "[32m"
-                  :blue    "[34m"
-                  :yellow  "[33m"
-                  :magenta "[35m"
-                  :cyan    "[36m"
-                  :black-bg "[40m"
-                  :red-bg "[41m"
-                  :green-bg "[42m"
-                  :yellow-bg "[43m"
-                  :blue-bg "[44m"
-                  :magenta-bg "[45m"
-                  :cyan-bg "[46m"
-                  :white-bg "[47m"
-                  :bold "[1m"
-                  :italic "[3m"
-                  :underline "[4m"
-                  :inverse "[7m"
-                  :strikethrough "[9m"})
-
-(defn ansi
-  "Get the ansi code for a specific color"
-  [code]
-  (str \u001b (get ansi-colors code (:reset ansi-colors))))
-
-(defn color 
-  "Wrap the given strings in the provided color. Color should be
-  a keyword and can be any of the following:
-  
-  [:reset :default :white :black :red :green :blue :yellow :magenta :cyan
-   :black-bg :red-bg :green-bg :yellow-bg :blue-bg :magenta-bg :cyan-bg :white-bg
-   :underline :italic :bold :strikethrough :inverse].
-  Each of these also has a function created for it: (cyan \"woohoo\")"
-  [code & s]
-  (str (ansi code) (apply str s) (ansi :reset)))
-
-(defn show-all []
-  (let [all-colors (apply juxt (for [cur (keys ansi-colors)]
-                                 (fn [input]
-                                   [cur (color cur input)])))]
-    (pprint (into (sorted-map) (all-colors "test")))))
-
-(defmacro create-colors []
-  (apply list 'do 
-         (for [k (keys ansi-colors)]
-           (let [code (ansi k)
-                 reset (ansi :reset)]
-             `(defn ~(symbol (name k)) [& s#] 
-                (str ~code (apply str s#) ~reset))))))
-
-(create-colors)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;rendering and printing the board
-
 (def alpha-start 97)
 (def alpha-end 123)
 (def letters (map (comp str char) (range alpha-start alpha-end)))
 (def pos-chars 3)
 
+(def ansi-styles
+  {:red   "[31m"
+   :green "[32m"
+   :blue  "[34m"
+   :reset "[0m"})
+
+(defn ansi
+  "Produce a string which will apply an ansi style"
+  [style]
+  (str \u001b (style ansi-styles)))
+
+(defn colorize
+  "Apply ansi color to text"
+  [text color]
+  (str (ansi color) text (ansi :reset)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;rendering and printing the board
+
+
+
 (defn render-pos
   [board pos]
   (str (nth letters (dec pos))
        (if (get-in board [pos :pegged])
-        (colorize "0" :blue)
-        (colorize "-" :red)
+         "0" ;modified to not include colorize
+        "-"
         )
        ))
 
@@ -269,6 +226,22 @@
   [letter]
   (inc (- (int (first letter)) alpha-start)))
 
+
+(defn get-input
+  "Waits for user to enter text and hit enter, then cleans the input"
+  ([] (get-input ""))
+  ([default]
+     (let [input (clojure.string/trim (read-line))]
+       (if (empty? input)
+         default
+         (clojure.string/lower-case input)))))
+
+(defn characters-as-strings
+  "Given a string, return a collection consisting of each individual
+  character"
+  [string]
+  (re-seq #"[a-zA-Z]" string))
+
 (defn get-input
   "Waits for user to enter text and hit enter, then cleans the input"
   ([] (get-input nil))
@@ -279,14 +252,24 @@
          (clojure.string/lower-case input)))))
 
 (defn prompt-move
+  "The main function"
   [board]
   (println "\nHere's your board:")
   (print-board board)
   (println "Move from where to where? Enter two letters:")
   (let [input (map letter->pos (characters-as-strings (get-input)))]
-    (if-let [new-board (make-move➊ board (first input) (second input))]
-      (user-entered-valid-move new-board)
-      (user-entered-invalid-move board))))
+    (if-let [new-board (make-move board (first input) (second input))]
+      (successful-move new-board)
+      (do
+        (println "\n!!! That was an invalid move :(\n")
+        (prompt-move board)))))
+
+
+(defn successful-move
+  [board]
+  (if (can-move? board)
+    (prompt-move board)
+    (game-over board)))
 
 (defn user-entered-invalid-move
   "Handles the next step after a user has entered an invalid move"
@@ -328,3 +311,22 @@
   (let [rows (Integer. (get-input 5))
         board (new-board rows)]
     (prompt-empty-peg board)))
+
+(defn prompt-empty-peg
+  [board]
+  (println "Here's your board:")
+  (print-board board)
+  (println "Remove which peg? [e]")
+  (prompt-move (remove-peg board (letter->pos (get-input "e")))))
+
+(defn prompt-rows
+  []
+  (println "How many rows? [5]")
+  (let [rows (Integer. (get-input 5))
+        board (new-board rows)]
+    (prompt-empty-peg board)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Run the game
+(prompt-move my-board)
