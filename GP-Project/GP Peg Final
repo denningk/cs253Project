@@ -1,5 +1,4 @@
-(ns gp-system.peg-board)
-
+(ns cs253.peg-game)
 ;Creating the Peg board game 
 ;From Clojure for the Brave and Famous, Chapter 5
 
@@ -455,7 +454,6 @@ using terminal-set and function-set. Does not use a loop."
 terminal-peg-trees
 '(0 2 3 5 6 8 9 11 12)
 
-(def terminal-pegs)
   
 
 (defn fitness-peg
@@ -500,7 +498,9 @@ terminal-peg-trees
   It returns the function which wins the tourney. If there
   is a tie, the winner is chosen randomly."
   [&programs]
-  (let [best-error (apply min (map :fitness &programs))]
+  (let [best-error (if (= 0 (count (map :fitness &programs)))
+                      15
+                      (apply min (map :fitness &programs)))]
    (:function (rand-nth (filter #(= best-error (:fitness %)) &programs)))))
 
 (defn tournament-selection
@@ -534,7 +534,8 @@ terminal-peg-trees
   '{+ 2
     * 2
     - 2
-    pd 2})
+    pd 2
+    make-move 3})
 
 (defn program-size
   "This function finds the size of a program"
@@ -595,6 +596,15 @@ terminal-peg-trees
       4)
     )))
 
+(defn tree-depth
+  "This function returns the depth of a tree.")
+
+(defn peg-depth-index
+  [prog max-depth]
+  (rand-nth (range (inc max-depth) (program-size prog))))
+
+
+
 (peg-index)
 
 (peg-index (full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 3))
@@ -604,32 +614,32 @@ terminal-peg-trees
 (defn crossover
   "This function performs a crossover on two programs and
   returns the new program."
-  [prog1 prog2]
-  (replace-random-subtree prog2 (select-random-subtree prog1 (peg-index prog1)) (peg-index prog2)))
+  [prog1 prog2 max-depth]
+  (replace-random-subtree prog2 (select-random-subtree prog1 (peg-depth-index prog1 max-depth)) (peg-depth-index prog2 max-depth)))
 
 
 
 (defn mutation
   "This function takes a random node in a subtree and replaces it
   with another random node."
-  [program terminal-set]
-  (replace-random-subtree program (rand-terminal terminal-set) (peg-index program)))
+  [program terminal-set max-depth]
+  (replace-random-subtree program (rand-terminal terminal-set) (peg-depth-index program max-depth)))
 
-(mutation (full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 3) (range 16))
+(mutation (full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 2) (range 16) 2)
 
 ; Combines all variation techniques
 (defn evolve
   "This function takes a collection of selected parents and evolves them.
   It calls tournament selection whenever a parent is needed."
-  [pop-maps terminal-set]
+  [pop-maps terminal-set max-depth]
   (loop [new-pop '()
          evolve-num (count pop-maps)]
     (let [probability (rand-int 100)] ; Reproduction 10%, Mutation 40%, Crossover 50%
       (cond (and (> probability 90) (> evolve-num 0)) (recur (conj new-pop (tournament-selection pop-maps))
                                                              (dec evolve-num))
-            (and (> probability 60) (> evolve-num 0)) (recur (conj new-pop (mutation (tournament-selection pop-maps) terminal-set))
+            (and (> probability 60) (> evolve-num 0)) (recur (conj new-pop (mutation (tournament-selection pop-maps) terminal-set max-depth))
                                                              (dec evolve-num))
-            (and (> probability 0) (> evolve-num 0)) (recur (conj new-pop (crossover (tournament-selection pop-maps) (tournament-selection pop-maps)))
+            (and (> probability 0) (> evolve-num 0)) (recur (conj new-pop (crossover (tournament-selection pop-maps) (tournament-selection pop-maps) max-depth))
                                                             (dec evolve-num))
             :else new-pop))))
 
@@ -649,17 +659,17 @@ terminal-peg-trees
   []
   (let [function-set '(make-move)
         terminal-set (range 1 16)
-        max-depth 5
+        max-depth 100
         pop-size 100
-        max-gen 2]
+        max-gen 100]
     (loop [current-pop (gen-population pop-size max-depth terminal-set function-set) ; Initialize population
            gen-num 0
            best-program nil
            best-prog-error nil]
       (println "Generation Number:" gen-num
-               "\nThe best program was:" best-program
+               "\nThe best ending board was:" best-program
                "\nThe error of the best program was:" best-prog-error)
-      (if (or (= gen-num max-gen) (= best-prog-error 0)) ; Continue until solution found or if max generation reached
+      (if (or (= gen-num max-gen) (= best-prog-error 1)) ; Continue until solution found or if max generation reached
         (do (println "\nGenetic Evolution finished!")
           (println "The best program is:")
           best-program)
@@ -667,7 +677,8 @@ terminal-peg-trees
               best-prog (single-tourney current-fitness) ; Finds best program of generation
               best-prog-fitness (best-fitness current-fitness)]
           (recur (evolve current-fitness ; Selection and evolution
-                         terminal-set function-set max-depth)
+                         terminal-set
+                         max-depth)
                  (inc gen-num)
                  best-prog
                  best-prog-fitness))))))
