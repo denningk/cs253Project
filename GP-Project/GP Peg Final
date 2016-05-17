@@ -1,4 +1,5 @@
-(ns cs253.peg-game)
+(ns gp-system.peg-board)
+
 ;Creating the Peg board game 
 ;From Clojure for the Brave and Famous, Chapter 5
 
@@ -160,6 +161,8 @@
   [board]
   (some (comp not-empty (partial valid-moves board))
         (map first (filter #(get (second %) :pegged) board))))
+
+(print-board(make-move (make-move my-board 4 1) 9 2))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;defining colorize
@@ -405,10 +408,10 @@
          num num-pop]
     (if (= num 0)
       pop
-      (recur (conj pop (if (< (rand-int 10) 5)
-                         (full-tree terminal-set function-set max-depth)
-                         (grow-tree terminal-set function-set max-depth)))
+      (recur (conj pop (full-peg-tree terminal-set function-set max-depth))
              (dec num)))))
+
+(gen-population 2 3 (range 16) '(make-move))
 
 
 
@@ -441,7 +444,28 @@ using terminal-set and function-set. Does not use a loop."
 
 (print-board ((make-program-into-fn (full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 500))))
 
+
+(count (filter :pegged 
+               (vals ((make-program-into-fn (full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 500))))))
+
 (make-move (make-move my-board 10 1) 6 4)
+
+(def terminal-peg-trees
+  (range 1 15 3))
+terminal-peg-trees
+'(0 2 3 5 6 8 9 11 12)
+
+(def terminal-pegs)
+  
+
+(defn fitness-peg
+  "This function finds the fitness of a single program for the peg game."
+  [program]
+  (count (filter :pegged 
+               (vals 
+                 ((make-program-into-fn program))))))
+
+(fitness-peg my-board)
 
 (defn fitness-prog
   "This function finds the fitness of a single program."
@@ -451,8 +475,8 @@ using terminal-set and function-set. Does not use a loop."
                 (let [x (:x test-case)
                       y (:y test-case)
                       func-program (make-program-into-fn program)] ; In case 'program' is a terminal
-                  (Math/abs (int (- (if (= 1 (number? program))    ; Otherwise causes cast error
-                                      (nth program 0 1)
+(Math/abs (int (- (if (= 1 (number? program))    ; Otherwise causes cast error
+                    (nth program 0 1)
                                       (func-program x)) 
                                     y)))))
               test-cases)))
@@ -461,10 +485,12 @@ using terminal-set and function-set. Does not use a loop."
 (defn fitness-eval
   "This function creates a map of functions with their
    respective error values."
-  [population test-cases]
+  [population]
   (map (fn [program]
-         {:function program :fitness (fitness-prog program test-cases)})
+         {:function program :fitness (fitness-peg program)})
        population))
+
+(evolve (fitness-eval (gen-population 2 3 (range 16) '(make-move))) (range 16))
 
 ;; Parent Selection
 ; We decided to implement tournament selection
@@ -531,6 +557,8 @@ using terminal-set and function-set. Does not use a loop."
       :else (recur (rest prog)
                    (- subtree-index (program-size (first prog)))))))
 
+
+
 (defn replace-random-subtree
   "Given a program and a replacement-subtree, replace a random node
    in the program with the replacement-subtree."
@@ -551,34 +579,55 @@ using terminal-set and function-set. Does not use a loop."
                  prog
                  (cons 0 (reductions + (map program-size prog)))))))
 
+(defn peg-index
+  "This function uses the equation 1/4(6n - (-1)^n + 1) in order
+  to find a random subtree which will allow for a legal crossover.
+  The equation was calculated using wolfram alpha."
+  [prog]
+  (let [num (rand-nth (range 1 (program-size prog)))]
+  (int 
+    (/ 
+      (+ 
+        (- 
+          (* 6 num) 
+          (Math/pow -1 num))
+        1)
+      4)
+    )))
+
+(peg-index)
+
+(peg-index (full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 3))
+
+(program-size (full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 3))
+
 (defn crossover
   "This function performs a crossover on two programs and
   returns the new program."
   [prog1 prog2]
-  (replace-random-subtree prog2 (select-random-subtree prog1)))
+  (replace-random-subtree prog2 (select-random-subtree prog1 (peg-index prog1)) (peg-index prog2)))
 
 
 
 (defn mutation
   "This function takes a random node in a subtree and replaces it
   with another random node."
-  [program terminal-set function-set max-depth]
-  (replace-random-subtree program (if (> (rand-int 10) 3) ; Replaces with a terminal 50% of time
-                                    (rand-terminal terminal-set)
-                                    (grow-tree terminal-set function-set max-depth))))
+  [program terminal-set]
+  (replace-random-subtree program (rand-terminal terminal-set) (peg-index program)))
 
+(mutation (full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 3) (range 16))
 
 ; Combines all variation techniques
 (defn evolve
   "This function takes a collection of selected parents and evolves them.
   It calls tournament selection whenever a parent is needed."
-  [pop-maps terminal-set function-set max-depth]
+  [pop-maps terminal-set]
   (loop [new-pop '()
          evolve-num (count pop-maps)]
     (let [probability (rand-int 100)] ; Reproduction 10%, Mutation 40%, Crossover 50%
       (cond (and (> probability 90) (> evolve-num 0)) (recur (conj new-pop (tournament-selection pop-maps))
                                                              (dec evolve-num))
-            (and (> probability 60) (> evolve-num 0)) (recur (conj new-pop (mutation (tournament-selection pop-maps) terminal-set function-set max-depth))
+            (and (> probability 60) (> evolve-num 0)) (recur (conj new-pop (mutation (tournament-selection pop-maps) terminal-set))
                                                              (dec evolve-num))
             (and (> probability 0) (> evolve-num 0)) (recur (conj new-pop (crossover (tournament-selection pop-maps) (tournament-selection pop-maps)))
                                                             (dec evolve-num))
@@ -599,10 +648,10 @@ using terminal-set and function-set. Does not use a loop."
   of the best program."
   []
   (let [function-set '(make-move)
-        terminal-set '(range 1 15)
-        max-depth 3
-        pop-size 1000
-        max-gen 100]
+        terminal-set (range 1 16)
+        max-depth 5
+        pop-size 100
+        max-gen 2]
     (loop [current-pop (gen-population pop-size max-depth terminal-set function-set) ; Initialize population
            gen-num 0
            best-program nil
@@ -614,7 +663,7 @@ using terminal-set and function-set. Does not use a loop."
         (do (println "\nGenetic Evolution finished!")
           (println "The best program is:")
           best-program)
-        (let [current-fitness (fitness-eval current-pop test-cases) ; Fitness evaluation
+        (let [current-fitness (fitness-eval current-pop) ; Fitness evaluation
               best-prog (single-tourney current-fitness) ; Finds best program of generation
               best-prog-fitness (best-fitness current-fitness)]
           (recur (evolve current-fitness ; Selection and evolution
