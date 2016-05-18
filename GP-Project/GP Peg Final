@@ -499,9 +499,11 @@ terminal-peg-trees
   is a tie, the winner is chosen randomly."
   [&programs]
   (let [best-error (if (= 0 (count (map :fitness &programs)))
-                      15
+                      100
                       (apply min (map :fitness &programs)))]
-   (:function (rand-nth (filter #(= best-error (:fitness %)) &programs)))))
+   (if (= best-error 100)
+     (full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 10)
+     (:function (rand-nth (filter #(= best-error (:fitness %)) &programs))))))
 
 (defn tournament-selection
   "This function generates a programs which can
@@ -596,8 +598,7 @@ terminal-peg-trees
       4)
     )))
 
-(defn tree-depth
-  "This function returns the depth of a tree.")
+
 
 (defn peg-depth-index
   [prog max-depth]
@@ -635,9 +636,9 @@ terminal-peg-trees
   (loop [new-pop '()
          evolve-num (count pop-maps)]
     (let [probability (rand-int 100)] ; Reproduction 10%, Mutation 40%, Crossover 50%
-      (cond (and (> probability 90) (> evolve-num 0)) (recur (conj new-pop (tournament-selection pop-maps))
+      (cond (and (> probability 70) (> evolve-num 0)) (recur (conj new-pop (tournament-selection pop-maps))
                                                              (dec evolve-num))
-            (and (> probability 60) (> evolve-num 0)) (recur (conj new-pop (mutation (tournament-selection pop-maps) terminal-set max-depth))
+            (and (> probability 20) (> evolve-num 0)) (recur (conj new-pop (mutation (tournament-selection pop-maps) terminal-set max-depth))
                                                              (dec evolve-num))
             (and (> probability 0) (> evolve-num 0)) (recur (conj new-pop (crossover (tournament-selection pop-maps) (tournament-selection pop-maps) max-depth))
                                                             (dec evolve-num))
