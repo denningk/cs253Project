@@ -1,8 +1,9 @@
-(ns cs253.peg-game)
+(ns gp-system.peg-game)
+
+;; Project by Keith Denning and Rajwol Joshi
+
 ;Creating the Peg board game 
 ;From Clojure for the Brave and Famous, Chapter 5
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Creating the board
 
@@ -13,35 +14,23 @@
      (let [new-sum (+ sum n)]
        (cons new-sum (lazy-seq (tri* new-sum (inc n)))))))
 
-(take 6 (tri*))
-
 (def tri (tri*))
-
-(take 5 tri)
 
 (defn triangular?
   "Is the number triangular? e.g. 1, 3, 6, 10, 15, etc"
   [n]
   (= n (last (take-while #(>= n %) tri))))
 
-(triangular? 5) 
-
-(triangular? 6)
-
 (defn row-tri
   "The triangular number at the end of row n"
   [n]
   (last (take n tri)))
-
-(row-tri 5) 
 
 (defn row-num
   "Returns row number the position belongs to: pos 1 in row 1,
   positions 2 and 3 in row 2, etc"
   [pos]
   (inc (count (take-while #(> pos %) tri))))
-
-(row-num 15)
 
 (defn connect
   "Form a mutual connection between two positions"
@@ -53,7 +42,6 @@
             [[pos destination] [destination pos]])
     board))
 
-(connect {} 15 1 2 4)
 
 (defn connect-right
   [board max-pos pos]
@@ -86,8 +74,6 @@
             pegged-board
             [connect-right connect-down-left connect-down-right])))
 
-(add-pos {} 15 1)
-
 (defn new-board
   "Creates a new board with the given number of rows"
   [rows]
@@ -97,8 +83,6 @@
             initial-board
             (range 1 (inc max-pos)))))
 
-
-(new-board 5)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Moving the pegs
@@ -133,9 +117,6 @@
                        (pegged? board jumped)))
                 (get-in board [pos :connections]))))
 
-
-(def my-board (assoc-in (new-board 5) [1 :pegged] false))
-
 (valid-moves my-board 4)
 
 (defn valid-move?
@@ -144,24 +125,12 @@
   [board p1 p2]
   (get (valid-moves board p1) p2))
 
-(valid-move? my-board 6 4)
-
-(defn make-move
-  "Move peg from p1 to p2, removing jumped peg"
-  [board p1 p2]
-  (if-let [jumped (valid-move? board p1 p2)]
-    (move-peg (remove-peg board jumped) p1 p2)
-    board))
-
-(make-move my-board 5 6)
-
 (defn can-move?
   "Do any of the pegged positions have valid moves?"
   [board]
   (some (comp not-empty (partial valid-moves board))
         (map first (filter #(get (second %) :pegged) board))))
 
-(print-board(make-move (make-move my-board 4 1) 9 2))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;defining colorize
@@ -169,12 +138,6 @@
 (def alpha-end 123)
 (def letters (map (comp str char) (range alpha-start alpha-end)))
 (def pos-chars 3)
-
-(def ansi-styles
-  {:red   "[31m"
-   :green "[32m"
-   :blue  "[34m"
-   :reset "[0m"})
 
 (defn ansi
   "Produce a string which will apply an ansi style"
@@ -187,8 +150,6 @@
   (str (ansi color) text (ansi :reset)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;rendering and printing the board
-
-
 
 (defn render-pos
   [board pos]
@@ -220,128 +181,34 @@
 (defn print-board
   [board]
   (doseq [row-num (range 1 (inc (:rows board)))]
-    (println (render-row board row-num))))
-
-(print-board my-board)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;Player interaction
-
-(defn letter->pos
-  "Converts a letter string to the corresponding position number"
-  [letter]
-  (inc (- (int (first letter)) alpha-start)))
+    (println (render-row board row-num)))
+  board)
 
 
-(defn get-input
-  "Waits for user to enter text and hit enter, then cleans the input"
-  ([] (get-input ""))
-  ([default]
-     (let [input (clojure.string/trim (read-line))]
-       (if (empty? input)
-         default
-         (clojure.string/lower-case input)))))
+;;Code edited by Keith Denning and Rajwol Joshi;;
 
-(defn characters-as-strings
-  "Given a string, return a collection consisting of each individual
-  character"
-  [string]
-  (re-seq #"[a-zA-Z]" string))
+(defn make-move
+  "Move peg from p1 to p2, removing jumped peg.
+  If an illegal move occurs, the board is returned.
+  If a legal move is made, the board is printed
+  in order to show the move."
+  [board p1 p2]
+  (if-let [jumped (valid-move? board p1 p2)]
+    (print-board (move-peg (remove-peg board jumped) p1 p2)) 
+    board))
 
-(defn get-input
-  "Waits for user to enter text and hit enter, then cleans the input"
-  ([] (get-input nil))
-  ([default]
-     (let [input (clojure.string/trim (read-line))]
-       (if (empty? input)
-         default
-         (clojure.string/lower-case input)))))
 
-(defn prompt-move
-  "The main function"
+
+(defn print-board
+  "This function prints the peg board and now also returns
+  the current game board. This function can be used with make-move."
   [board]
-  (println "\nHere's your board:")
-  (print-board board)
-  (println "Move from where to where? Enter two letters:")
-  (let [input (map letter->pos (characters-as-strings (get-input)))]
-    (if-let [new-board (make-move board (first input) (second input))]
-      (successful-move new-board)
-      (do
-        (println "\n!!! That was an invalid move :(\n")
-        (prompt-move board)))))
+  (doseq [row-num (range 1 (inc (:rows board)))]
+    (println (render-row board row-num)))
+  board)
 
-
-(defn successful-move
-  [board]
-  (if (can-move? board)
-    (prompt-move board)
-    (game-over board)))
-
-(defn user-entered-invalid-move
-  "Handles the next step after a user has entered an invalid move"
-  [board]
-  (println "\n!!! That was an invalid move :(\n")
-  (prompt-move board))
-
-(defn user-entered-valid-move
-  "Handles the next step after a user has entered a valid move"
-  [board]
-  (if (can-move? board)
-    (prompt-move board)
-    (game-over board)))
-
-(defn game-over
-  "Announce the game is over and prompt to play again"
-  [board]
-  (let [remaining-pegs (count (filter :pegged (vals board)))]
-    (println "Game over! You had" remaining-pegs "pegs left:")
-    (print-board board)
-    (println "Play again? y/n [y]")
-    (let [input (get-input "y")]
-      (if (= "y" input)
-        (prompt-rows)
-        (do
-          (println "Bye!")
-          (System/exit 0))))))
-
-(defn prompt-empty-peg
-  [board]
-  (println "Here's your board:")
-  (print-board board)
-  (println "Remove which peg? [e]")
-  (prompt-move (remove-peg board (letter->pos (get-input "e")))))
-
-(defn prompt-rows
-  []
-  (println "How many rows? [5]")
-  (let [rows (Integer. (get-input 5))
-        board (new-board rows)]
-    (prompt-empty-peg board)))
-
-(defn prompt-empty-peg
-  [board]
-  (println "Here's your board:")
-  (print-board board)
-  (println "Remove which peg? [e]")
-  (prompt-move (remove-peg board (letter->pos (get-input "e")))))
-
-(defn prompt-rows
-  []
-  (println "How many rows? [5]")
-  (let [rows (Integer. (get-input 5))
-        board (new-board rows)]
-    (prompt-empty-peg board)))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;Run the game
-(prompt-move my-board)
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-;; Keith Denning and Rajwol Joshi
+(def my-board (assoc-in (new-board 5) [1 :pegged] false)) ; This sets the starting board
+;;Code by Keith Denning and Rajwol Joshi
 
 ;; Initialization
 
@@ -357,46 +224,15 @@
   (rand-nth terminal-set))
                                                                                                                                 
 ; Tree Generation
-(defn full-tree
-  "This function creates a random full-tree"
-  [terminal-set function-set max-depth]
-  (list (rand-nth function-set)
-        (if (= 1 max-depth)
-          (rand-nth terminal-set)
-          (full-tree terminal-set function-set (dec max-depth)))
-        (if (= 1 max-depth)
-          (rand-nth terminal-set)
-          (full-tree terminal-set function-set (dec max-depth)))))
-
-(full-tree '(1 2) '(+ -) 3)
-
 (defn full-peg-tree
   "This function creates a random full-tree"
   [terminal-set function-set max-depth]
   (list (rand-nth function-set)
         (if (= 1 max-depth)
-          my-board
+          my-board ; The last node must be the initial game board.
           (full-peg-tree terminal-set function-set (dec max-depth)))
         (rand-nth terminal-set)
         (rand-nth terminal-set)))
-
-(full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 3)
-
-
-(defn grow-tree
-  "This function creates a random grow-tree"
-  [terminal-set function-set max-depth]
-  (let [item (rand-nth (concat function-set terminal-set))]
-    (if (some #(= item %) terminal-set)
-      item
-      (list item
-            (if (or (= 1 max-depth) (some #(= item %) terminal-set))
-              (rand-nth terminal-set)
-              (grow-tree terminal-set function-set (dec max-depth)))
-            (if (or (= 1 max-depth) (some #(= item %) terminal-set))
-              (rand-nth terminal-set)
-              (grow-tree terminal-set function-set (dec max-depth)))
-            ))))
   
 ; Population Generation
 (defn gen-population
@@ -410,75 +246,24 @@
       (recur (conj pop (full-peg-tree terminal-set function-set max-depth))
              (dec num)))))
 
-(gen-population 2 3 (range 16) '(make-move))
-
-
-
-(defn make-population
-  "Makes a population of n number of program-trees of a inputed max-depth 
-using terminal-set and function-set. Does not use a loop."
-  [pop-num terminal-set function-set max-depth]
-  (list (take (* 0.5 pop-num)(repeatedly #(full-tree terminal-set function-set max-depth)))
-        (take (* 0.5 pop-num)(repeatedly #(grow-tree terminal-set function-set max-depth)))))
     
 ;; Fitness Evaluation
 ; Use 10 data points
-(def test-cases [{:x -10 :y -1007}
-                 {:x -8 :y -517}
-                 {:x -6 :y -219}
-                 {:x -4 :y -65}
-                 {:x -2 :y -7}
-                 {:x 0 :y 3} 
-                 {:x 1 :y 5}
-                 {:x 3 :y 33}
-                 {:x 5 :y 133}
-                 {:x 7 :y 353}
-                 {:x 9 :y 741}])
 
 (defn make-program-into-fn
+  "Makes a list into a function. Removed the argument because
+  the peg game programs do not take arguments."
   [program]
   (eval (list 'fn
               '[]
               program)))
 
-(print-board ((make-program-into-fn (full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 500))))
-
-
-(count (filter :pegged 
-               (vals ((make-program-into-fn (full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 500))))))
-
-(make-move (make-move my-board 10 1) 6 4)
-
-(def terminal-peg-trees
-  (range 1 15 3))
-terminal-peg-trees
-'(0 2 3 5 6 8 9 11 12)
-
-  
-
 (defn fitness-peg
   "This function finds the fitness of a single program for the peg game."
   [program]
-  (count (filter :pegged 
-               (vals 
+  (count (filter :pegged ; Counts the number of pegs remaining
+               (vals     ; If a position is "pegged" it is counted
                  ((make-program-into-fn program))))))
-
-(fitness-peg my-board)
-
-(defn fitness-prog
-  "This function finds the fitness of a single program."
-  [program test-cases]
-  (apply +' 
-         (map (fn[test-case] 
-                (let [x (:x test-case)
-                      y (:y test-case)
-                      func-program (make-program-into-fn program)] ; In case 'program' is a terminal
-(Math/abs (int (- (if (= 1 (number? program))    ; Otherwise causes cast error
-                    (nth program 0 1)
-                                      (func-program x)) 
-                                    y)))))
-              test-cases)))
-
 
 (defn fitness-eval
   "This function creates a map of functions with their
@@ -488,7 +273,6 @@ terminal-peg-trees
          {:function program :fitness (fitness-peg program)})
        population))
 
-(evolve (fitness-eval (gen-population 2 3 (range 16) '(make-move))) (range 16))
 
 ;; Parent Selection
 ; We decided to implement tournament selection
@@ -497,13 +281,9 @@ terminal-peg-trees
   "This function runs a single round of a tournament.
   It returns the function which wins the tourney. If there
   is a tie, the winner is chosen randomly."
-  [&programs]
-  (let [best-error (if (= 0 (count (map :fitness &programs)))
-                      100
-                      (apply min (map :fitness &programs)))]
-   (if (= best-error 100)
-     (full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 10)
-     (:function (rand-nth (filter #(= best-error (:fitness %)) &programs))))))
+  [programs]
+  (let [best-error (apply min (map :fitness programs))]
+   (:function (rand-nth (filter #(= best-error (:fitness %)) programs)))))
 
 (defn tournament-selection
   "This function generates a programs which can
@@ -512,32 +292,11 @@ terminal-peg-trees
   [pop-maps]
   (single-tourney (repeatedly (rand-nth (range 3 7)) (fn [](rand-nth pop-maps)))))
 
-(tournament-selection
-  [{:function 3 :fitness 2}
-   {:function 4 :fitness 1}])
-
-; Ephemeral Random Constant defined
-(defn erc
-  "This function is an ephemeral random constant."
-  []
-  (rand-nth (range -50 50)))
-
-; Protected division
-(defn pd
-  "Protected division, to protect against divide by zero."
-  [x y]
-  (if (= y 0)
-    1
-    (/ x y)))
 
 ;; Variation
 
 (def instructions
-  '{+ 2
-    * 2
-    - 2
-    pd 2
-    make-move 3})
+  '{make-move 3})
 
 (defn program-size
   "This function finds the size of a program"
@@ -560,8 +319,6 @@ terminal-peg-trees
       :else (recur (rest prog)
                    (- subtree-index (program-size (first prog)))))))
 
-
-
 (defn replace-random-subtree
   "Given a program and a replacement-subtree, replace a random node
    in the program with the replacement-subtree."
@@ -582,65 +339,53 @@ terminal-peg-trees
                  prog
                  (cons 0 (reductions + (map program-size prog)))))))
 
-(defn peg-index
-  "This function uses the equation 1/4(6n - (-1)^n + 1) in order
-  to find a random subtree which will allow for a legal crossover.
-  The equation was calculated using wolfram alpha."
-  [prog]
-  (let [num (rand-nth (range 1 (program-size prog)))]
-  (int 
-    (/ 
-      (+ 
-        (- 
-          (* 6 num) 
-          (Math/pow -1 num))
-        1)
-      4)
-    )))
-
-
-
 (defn peg-depth-index
+  "This function finds the index at which a subtree can be replaced."
   [prog max-depth]
-  (rand-nth (range (inc max-depth) (program-size prog))))
+  (rand-nth (range (inc max-depth) (program-size prog)))) ; The leftmost branch can never be replaced
+                                                          ; That branch will be as long as the max-depth
 
-
-
-(peg-index)
-
-(peg-index (full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 3))
-
-(program-size (full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 3))
-
-(defn crossover
+;; Major System Change: Multi-Crossover and Multi-Mutation ;;
+(defn multi-crossover
   "This function performs a crossover on two programs and
-  returns the new program."
-  [prog1 prog2 max-depth]
-  (replace-random-subtree prog2 (select-random-subtree prog1 (peg-depth-index prog1 max-depth)) (peg-depth-index prog2 max-depth)))
+  returns the new program. The crossover is performed a random number
+  of times between 1 and 5. The correct index must be used in order to
+  protect the leftmost branch containing the initial board."
+  [prog1 prog2 max-depth count]
+  (if (= count 0)
+    prog1
+    (multi-crossover (replace-random-subtree prog2 
+                                             (select-random-subtree prog1 
+                                                                    (peg-depth-index prog1 max-depth)) 
+                                             (peg-depth-index prog2 max-depth))
+                     prog2
+                     max-depth (dec count))))
 
-
-
-(defn mutation
+(defn multi-mutation
   "This function takes a random node in a subtree and replaces it
-  with another random node."
-  [program terminal-set max-depth]
-  (replace-random-subtree program (rand-terminal terminal-set) (peg-depth-index program max-depth)))
+  with another random node. The mutation is performed a random number
+  of times between 1 and 5."
+  [program terminal-set max-depth count]
+  (if (= count 0)
+   program
+ (multi-mutation (replace-random-subtree program (rand-terminal terminal-set) (peg-depth-index program max-depth))
+           terminal-set max-depth (dec count))))
 
-(mutation (full-peg-tree '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) '(make-move) 2) (range 16) 2)
 
 ; Combines all variation techniques
 (defn evolve
   "This function takes a collection of selected parents and evolves them.
-  It calls tournament selection whenever a parent is needed."
+  It calls tournament selection whenever a parent is needed. Added '=' to
+  the last condition. Solved the issue of premature recursion end."
   [pop-maps terminal-set max-depth]
   (loop [new-pop '()
          evolve-num (count pop-maps)]
     (let [probability (rand-int 100)] ; Reproduction 10%, Mutation 40%, Crossover 50%
-      (cond (and (> probability 70) (> evolve-num 0)) (recur (conj new-pop (tournament-selection pop-maps))
+      (cond (and (> probability 90) (> evolve-num 0)) (recur (conj new-pop (tournament-selection pop-maps))
                                                              (dec evolve-num))
-            (and (> probability 20) (> evolve-num 0)) (recur (conj new-pop (mutation (tournament-selection pop-maps) terminal-set max-depth))
+            (and (> probability 60) (> evolve-num 0)) (recur (conj new-pop (multi-mutation (tournament-selection pop-maps) terminal-set max-depth (rand-int 5)))
                                                              (dec evolve-num))
-            (and (> probability 0) (> evolve-num 0)) (recur (conj new-pop (crossover (tournament-selection pop-maps) (tournament-selection pop-maps) max-depth))
+            (and (>= probability 0) (> evolve-num 0)) (recur (conj new-pop (multi-crossover (tournament-selection pop-maps) (tournament-selection pop-maps) max-depth (rand-int 5)))
                                                             (dec evolve-num))
             :else new-pop))))
 
@@ -656,24 +401,26 @@ terminal-peg-trees
   "This function runs the genetic programming system.
   For every generation, it displays the generation number,
   the best program of that generation, and the total error
-  of the best program."
+  of the best program. At the end, the moves of the best
+  program are printed."
   []
   (let [function-set '(make-move)
         terminal-set (range 1 16)
-        max-depth 100
-        pop-size 100
+        max-depth 750
+        pop-size 20
         max-gen 100]
     (loop [current-pop (gen-population pop-size max-depth terminal-set function-set) ; Initialize population
            gen-num 0
            best-program nil
            best-prog-error nil]
       (println "Generation Number:" gen-num
-               "\nThe best ending board was:" best-program
-               "\nThe error of the best program was:" best-prog-error)
+               "\nThe best program was:" best-program
+               "\nThe error of the best program was (number of pegs left):" best-prog-error
+               "Pop-num:" (count current-pop))
       (if (or (= gen-num max-gen) (= best-prog-error 1)) ; Continue until solution found or if max generation reached
         (do (println "\nGenetic Evolution finished!")
           (println "The best program is:")
-          best-program)
+          ((make-program-into-fn best-program)))
         (let [current-fitness (fitness-eval current-pop) ; Fitness evaluation
               best-prog (single-tourney current-fitness) ; Finds best program of generation
               best-prog-fitness (best-fitness current-fitness)]
@@ -686,5 +433,6 @@ terminal-peg-trees
 
 (genetic-programming)
 
-;; It seems like it can sometimes get close to the answer but the system will occasionally devolve.
-;; It might be luck but we also might need to add more test cases.
+;; In our proposal we said that we wanted our major change to be hoist mutation. However, hoist
+;; mutation would not be possible with the trees that we've created due to the fact that 
+;; the leftmost leaf node must be intact.
